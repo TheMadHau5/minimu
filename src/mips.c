@@ -32,6 +32,7 @@ struct minimu_mips mips_init(void* mem, int len) {
 // TODO: implement coprocessors and doublewords
 
 void mips_execute_r(struct minimu_mips *mips, int instr) {
+	int pc = mips->pc;
 	int rs = (instr >> 21) & 0x1F;
 	int rt = (instr >> 16) & 0x1F;
 	int rd = (instr >> 11) & 0x1F;
@@ -87,12 +88,12 @@ void mips_execute_r(struct minimu_mips *mips, int instr) {
 			mips->registers[32] = *rsp;
 			break;
 		case 0x18: // MULT
-			mips->registers[32] = *rsp * *rtp;
-			mips->registers[33] = *rsp * *rtp;
+			mips->registers[32] = (*rsp * *rtp) & 0xFFFF;
+			mips->registers[33] = ((long)*rsp * (long)*rtp) >> 32;
 			break;
 		case 0x19: // MULTU
-			mips->registers[32] = *rsp / *rtp;
-			mips->registers[33] = *rsp % *rtp;
+			mips->registers[32] = (*rsp * *rtp) & 0xFFFF;
+			mips->registers[33] = ((long)*rsp * (long)*rtp) >> 32;
 			break;
 		case 0x27: // NOR
 			*rdp = ~(*rsp | *rtp);
@@ -135,6 +136,12 @@ void mips_execute_r(struct minimu_mips *mips, int instr) {
 			break;
 		case 0xC: // SYSCALL
 			// TODO
+			printf("SYSCALL: ");
+			for (int i = 0; i < 32; i++) {
+				printf(" %4X", mips->registers[i]);
+			}
+			puts("");
+			// currently just dumps regs
 			break;
 		case 0x34: // TEQ
 			// TODO
@@ -158,6 +165,7 @@ void mips_execute_r(struct minimu_mips *mips, int instr) {
 			*rdp = *rsp ^ *rtp;
 			break;
 	}
+	if (mips->pc == pc) mips->pc += 4;
 }
 
 void mips_execute_ri(struct minimu_mips *mips, int instr) {
@@ -214,6 +222,7 @@ void mips_execute_ri(struct minimu_mips *mips, int instr) {
 			// TODO
 			break;
 	}
+	if (mips->pc == pc) mips->pc += 4;
 }
 
 void mips_execute_j(struct minimu_mips *mips, int instr) {
@@ -226,9 +235,19 @@ void mips_execute_j(struct minimu_mips *mips, int instr) {
 	}
 }
 
-void mips_execute(struct minimu_mips *mips) {
+void mips_execute(struct minimu_mips *mips, int flags) {
 	int pc = mips->pc;
 	int instr = *((int*)(&((char*)mips->memory)[pc]));
+	if (flags & 0x2) { // verbose
+		int split[6];
+		split[0] = instr >> 26;
+		split[1] = (instr >> 21) & 0x1F;
+		split[2] = (instr >> 16) & 0x1F;
+		split[3] = (instr >> 11) & 0x1F;
+		split[4] = (instr >> 6) & 0x1F;
+		split[5] = instr & 0x3F;
+		fprintf(stdout, "%08X: %06b %05b %05b %05b %05b %06b\n", pc, split[0], split[1], split[2], split[3], split[4], split[5]);
+	}
 	int opcode = instr >> 26;
 	mips->registers[0] = 0; // reset $zero
 	switch (opcode) {
@@ -349,6 +368,7 @@ void mips_execute(struct minimu_mips *mips) {
 			break;
 		case 0xE: // XORI
 			*rtp = *rsp ^ im;
+			break;
 	}
 	if (mips->pc == pc) mips->pc += 4; // increment pc, except when explicitly modified
 }

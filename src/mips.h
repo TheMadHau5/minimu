@@ -7,4 +7,5 @@ struct minimu_mips {
 	void* memory;
 };
 
-void mips_execute(struct minimu_mips *);
+struct minimu_mips mips_init(void*, int);
+void mips_execute(struct minimu_mips *, int);
