@@ -15,7 +15,7 @@ with open(fname, "wb") as fd:
 			hexin = input().strip()
 			if not hexin:
 				break
-			hexbin += int(hexin, 16).to_bytes(len(hexin) // 2)
+			hexbin += int(hexin, 16).to_bytes(len(hexin) // 2, byteorder='little')
 
 		fd.seek(address)
 		fd.write(hexbin)
