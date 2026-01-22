@@ -138,7 +138,7 @@ void mips_execute_r(struct minimu_mips *mips, int instr) {
 			// TODO
 			printf("SYSCALL: ");
 			for (int i = 0; i < 32; i++) {
-				printf(" %4X", mips->registers[i]);
+				printf(" %04X", mips->registers[i]);
 			}
 			puts("");
 			// currently just dumps regs
@@ -176,32 +176,32 @@ void mips_execute_ri(struct minimu_mips *mips, int instr) {
 	int* rsp = &mips->registers[rs];
 	switch (funct) {
 		case 0x1: // BGEZ
-			mips->pc = (*rsp >= 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp >= 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x11: // BGEZAL
-			mips->pc = (*rsp >= 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp >= 0 ? im<<2 : 0); // TODO: handle delay slot
 			mips->registers[31] = pc + 4;
 			break;
 		case 0x13: // BGEZALL
-			mips->pc = (*rsp >= 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp >= 0 ? im<<2 : 0); // TODO: handle delay slot
 			mips->registers[31] = pc + 4;
 			break;
 		case 0x3: // BGEZL
-			mips->pc = (*rsp >= 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp >= 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x0: // BLTZ
-			mips->pc = (*rsp < 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp < 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x10: // BLTZAL
-			mips->pc = (*rsp < 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp < 0 ? im<<2 : 0); // TODO: handle delay slot
 			mips->registers[31] = pc + 4;
 			break;
 		case 0x12: // BLTZALL
-			mips->pc = (*rsp < 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp < 0 ? im<<2 : 0); // TODO: handle delay slot
 			mips->registers[31] = pc + 4;
 			break;
 		case 0x2: // BLTZL
-			mips->pc = (*rsp < 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp < 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0xC: // TEQI
 			// TODO
@@ -228,7 +228,7 @@ void mips_execute_ri(struct minimu_mips *mips, int instr) {
 void mips_execute_j(struct minimu_mips *mips, int instr) {
 	int pc = mips->pc;
 	int opcode = instr >> 26;
-	mips->pc = (pc & (0xF << 28)) | (instr & ((1 << 26) - 1)) << 2; // TODO: handle delay slot
+	mips->pc = (pc & (0xF << 28)) | ((instr & ((1 << 26) - 1)) << 2); // TODO: handle delay slot
 	if (opcode & 1) {
 		// jal; save pc+8 to $ra
 		mips->registers[31] = pc + 8;
@@ -260,7 +260,7 @@ void mips_execute(struct minimu_mips *mips, int flags) {
 	}
 	int rs = (instr >> 21) & 0x1F;
 	int rt = (instr >> 16) & 0x1F;
-	int im = instr & 0xFFFF;
+	short im = instr & 0xFFFF;
 	int* rsp = &mips->registers[rs];
 	int* rtp = &mips->registers[rt];
 	switch (opcode) {
@@ -274,28 +274,28 @@ void mips_execute(struct minimu_mips *mips, int flags) {
 			*rtp = *rsp & im;
 			break;
 		case 0x4: // BEQ
-			mips->pc = (*rtp == *rsp ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rtp == *rsp ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x14: // BEQL
-			mips->pc = (*rtp == *rsp ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rtp == *rsp ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x7: // BGTZ
-			mips->pc = (*rsp > 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp > 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x17: // BGTZL
-			mips->pc = (*rsp > 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp > 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x6: // BLEZ
-			mips->pc = (*rsp < 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp < 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x16: // BLEZL
-			mips->pc = (*rsp < 0 ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rsp < 0 ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x5: // BNE
-			mips->pc = (*rtp != *rsp ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rtp != *rsp ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x15: // BNEL
-			mips->pc = (*rtp != *rsp ? im<<2 : pc); // TODO: handle delay slot
+			mips->pc += (*rtp != *rsp ? im<<2 : 0); // TODO: handle delay slot
 			break;
 		case 0x20: // LB
 			*rtp = ((char*)mips->memory)[*rsp + im]; // TODO: vAddr vs pAddr
