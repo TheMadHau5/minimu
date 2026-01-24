@@ -56,4 +56,4 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
 $(BIN): $(OBJ)
 	@echo -e "\e[1;32m""Linking C executable $@""\e[0m"
 	mkdir -p $(@D)
-	$(CC) $(OBJ) -o $@ -lvulkan -lglfw -lm
+	$(CC) $(OBJ) -o $@

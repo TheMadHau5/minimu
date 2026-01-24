@@ -31,6 +31,26 @@ struct minimu_mips mips_init(void* mem, int len) {
 // TODO: handle sign and endianness
 // TODO: implement coprocessors and doublewords
 
+void mips_execute_syscall(struct minimu_mips *mips, int instr) {
+	// currently just dumps regs
+	int call = mips->registers[2];
+	int cval = mips->registers[4];
+	switch (call) {
+		case 0x1:
+			printf("%d", cval);
+			break;
+		case 0x4:
+			printf("%s", &((char*)mips->memory)[cval]);
+			break;
+		default:
+			printf("SYSCALL %02X:", call);
+			for (int i = 0; i < 32; i++) {
+				printf(" %04X", mips->registers[i]);
+			}
+			puts("");
+	}
+}
+
 void mips_execute_r(struct minimu_mips *mips, int instr) {
 	int pc = mips->pc;
 	int rs = (instr >> 21) & 0x1F;
@@ -135,13 +155,7 @@ void mips_execute_r(struct minimu_mips *mips, int instr) {
 			// TODO
 			break;
 		case 0xC: // SYSCALL
-			// TODO
-			printf("SYSCALL: ");
-			for (int i = 0; i < 32; i++) {
-				printf(" %04X", mips->registers[i]);
-			}
-			puts("");
-			// currently just dumps regs
+			mips_execute_syscall(mips, instr);
 			break;
 		case 0x34: // TEQ
 			// TODO
