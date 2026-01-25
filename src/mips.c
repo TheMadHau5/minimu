@@ -282,7 +282,7 @@ void mips_execute(struct minimu_mips *mips, int flags) {
 			*rtp = *rsp + im; // TODO: signal exception on overflow
 			break;
 		case 0x9: // ADDIU
-			*rtp = *rsp + im;
+			*rtp = *rsp + *((unsigned short*)&im);
 			break;
 		case 0xC: // ANDI
 			*rtp = *rsp & im;
