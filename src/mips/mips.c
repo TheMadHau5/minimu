@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "mips.h"
 
+void mips_execute(struct minimu_cpu* mips_cpu);
+
 char* mips_stdin() {
 	static char line[256];
 	return fgets(line, sizeof(line), stdin);
@@ -12,14 +14,13 @@ void mips_stderr(char* str) {
 	printf("mips stderr: %s\n", str);
 }
 
-struct minimu_mips mips_init(void* mem, int len) {
+struct minimu_mips mips_init(void* mem, uint32_t len, uint16_t flags) {
 	return (struct minimu_mips) {
 		.cpu = (struct minimu_cpu) {
+			&mips_execute,
 			len,
+			flags,
 			0,
-			mips_stdin,
-			mips_stdout,
-			mips_stderr,
 		},
 		.pc = 0,
 		.registers = {},
@@ -31,7 +32,7 @@ struct minimu_mips mips_init(void* mem, int len) {
 // TODO: handle sign and endianness
 // TODO: implement coprocessors and doublewords
 
-void mips_execute_syscall(struct minimu_mips *mips, int instr) {
+void mips_execute_syscall(struct minimu_mips *mips, uint32_t instr) {
 	// currently just dumps regs
 	int call = mips->registers[2];
 	int cval = mips->registers[4];
@@ -51,22 +52,27 @@ void mips_execute_syscall(struct minimu_mips *mips, int instr) {
 	}
 }
 
-void mips_execute_r(struct minimu_mips *mips, int instr) {
-	int pc = mips->pc;
-	int rs = (instr >> 21) & 0x1F;
-	int rt = (instr >> 16) & 0x1F;
-	int rd = (instr >> 11) & 0x1F;
-	int shamt = (instr >> 6) & 0x1F;
-	int funct = instr & 0x3F;
-	int* rsp = &mips->registers[rs];
-	int* rtp = &mips->registers[rt];
-	int* rdp = &mips->registers[rd];
+void mips_execute_r(struct minimu_mips *mips, uint32_t instr) {
+	uint32_t pc = mips->pc;
+	uint8_t rs = (instr >> 21) & 0x1F;
+	uint8_t rt = (instr >> 16) & 0x1F;
+	uint8_t rd = (instr >> 11) & 0x1F;
+	uint8_t shamt = (instr >> 6) & 0x1F;
+	uint8_t funct = instr & 0x3F;
+	int32_t* rsp = &mips->registers[rs];
+	int32_t* rtp = &mips->registers[rt];
+	int32_t* rdp = &mips->registers[rd];
 	switch (funct) {
 		case 0x20: // ADD
-			*rdp = *rsp + *rtp; // TODO: signal exception on overflow
+			if ((*rsp > 0 && *rtp > 0x7FFFFFFF - *rsp)
+					|| (*rsp < 0 && *rtp < 0xFFFFFFFF - *rsp)) {
+				// TODO: signal exception on overflow
+			} else {
+				*rdp = *rsp + *rtp;
+			}
 			break;
 		case 0x21: // ADDU
-			*rdp = *rsp + *rtp;
+			*(uint32_t*)rdp = *(uint32_t*)rsp + *(uint32_t*)rtp;
 			break;
 		case 0x24: // AND
 			*rdp = *rsp & *rtp;
@@ -108,12 +114,12 @@ void mips_execute_r(struct minimu_mips *mips, int instr) {
 			mips->registers[32] = *rsp;
 			break;
 		case 0x18: // MULT
-			mips->registers[32] = (*rsp * *rtp) & 0xFFFF;
-			mips->registers[33] = ((long)*rsp * (long)*rtp) >> 32;
+			mips->registers[32] = (*rsp * *rtp) & 0xFFFFFFFF;
+			mips->registers[33] = ((int64_t)*rsp * (int64_t)*rtp) >> 32;
 			break;
 		case 0x19: // MULTU
-			mips->registers[32] = (*rsp * *rtp) & 0xFFFF;
-			mips->registers[33] = ((long)*rsp * (long)*rtp) >> 32;
+			mips->registers[32] = (*rsp * *rtp) & 0xFFFFFFFF;
+			mips->registers[33] = ((uint64_t)*rsp * (uint64_t)*rtp) >> 32;
 			break;
 		case 0x27: // NOR
 			*rdp = ~(*rsp | *rtp);
@@ -182,12 +188,12 @@ void mips_execute_r(struct minimu_mips *mips, int instr) {
 	if (mips->pc == pc) mips->pc += 4;
 }
 
-void mips_execute_ri(struct minimu_mips *mips, int instr) {
-	int pc = mips->pc;
-	int rs = (instr >> 21) & 0x1F;
-	int funct = (instr >> 16) & 0x1F;
-	int im = instr & 0xFFFF;
-	int* rsp = &mips->registers[rs];
+void mips_execute_ri(struct minimu_mips *mips, uint32_t instr) {
+	uint32_t pc = mips->pc;
+	uint8_t rs = (instr >> 21) & 0x1F;
+	uint8_t funct = (instr >> 16) & 0x1F;
+	int16_t im = instr & 0xFFFF;
+	int32_t* rsp = &mips->registers[rs];
 	switch (funct) {
 		case 0x1: // BGEZ
 			mips->pc += (*rsp >= 0 ? im<<2 : 0); // TODO: handle delay slot
@@ -239,9 +245,9 @@ void mips_execute_ri(struct minimu_mips *mips, int instr) {
 	if (mips->pc == pc) mips->pc += 4;
 }
 
-void mips_execute_j(struct minimu_mips *mips, int instr) {
-	int pc = mips->pc;
-	int opcode = instr >> 26;
+void mips_execute_j(struct minimu_mips *mips, uint32_t instr) {
+	uint32_t pc = mips->pc;
+	uint8_t opcode = instr >> 26;
 	mips->pc = (pc & (0xF << 28)) | ((instr & ((1 << 26) - 1)) << 2); // TODO: handle delay slot
 	if (opcode & 1) {
 		// jal; save pc+8 to $ra
@@ -249,10 +255,11 @@ void mips_execute_j(struct minimu_mips *mips, int instr) {
 	}
 }
 
-void mips_execute(struct minimu_mips *mips, int flags) {
-	int pc = mips->pc;
-	int instr = *((int*)(&((char*)mips->memory)[pc]));
-	if (flags & 0x2) { // verbose
+void mips_execute(struct minimu_cpu* mips_cpu) {
+	struct minimu_mips* mips = mips_cpu;
+	uint32_t pc = mips->pc;
+	uint32_t instr = *((int*)(&((char*)mips->memory)[pc]));
+	if (mips->cpu.flags & 0x2) { // verbose
 		int split[6];
 		split[0] = instr >> 26;
 		split[1] = (instr >> 21) & 0x1F;
@@ -262,7 +269,7 @@ void mips_execute(struct minimu_mips *mips, int flags) {
 		split[5] = instr & 0x3F;
 		fprintf(stdout, "%08X: %06b %05b %05b %05b %05b %06b\n", pc, split[0], split[1], split[2], split[3], split[4], split[5]);
 	}
-	int opcode = instr >> 26;
+	uint8_t opcode = instr >> 26;
 	mips->registers[0] = 0; // reset $zero
 	switch (opcode) {
 		case 0x0:
@@ -272,17 +279,29 @@ void mips_execute(struct minimu_mips *mips, int flags) {
 		case 0x2: case 0x3:
 			mips_execute_j(mips, instr); return;
 	}
-	int rs = (instr >> 21) & 0x1F;
-	int rt = (instr >> 16) & 0x1F;
-	short im = instr & 0xFFFF;
-	int* rsp = &mips->registers[rs];
-	int* rtp = &mips->registers[rt];
+	switch (opcode >> 2) {
+		case 0x4: // COPz
+		case 0xC: // LWCz
+		case 0xE: // SWCz
+			// TODO: implement coprocessors
+			break;
+	}
+	uint8_t rs = (instr >> 21) & 0x1F;
+	uint8_t rt = (instr >> 16) & 0x1F;
+	int16_t im = instr & 0xFFFF;
+	int32_t* rsp = &mips->registers[rs];
+	int32_t* rtp = &mips->registers[rt];
 	switch (opcode) {
 		case 0x8: // ADDI
-			*rtp = *rsp + im; // TODO: signal exception on overflow
+			if ((*rsp > 0 && im > 0x7FFFFFFF - *rsp)
+					|| (*rsp < 0 && im < 0xFFFFFFFF - *rsp)) {
+				// TODO: signal exception on overflow
+			} else {
+				*rtp = *rsp + im;
+			}
 			break;
 		case 0x9: // ADDIU
-			*rtp = *rsp + *((unsigned short*)&im);
+			*rtp = *(uint32_t*)rsp + *((uint16_t*)&im);
 			break;
 		case 0xC: // ANDI
 			*rtp = *rsp & im;

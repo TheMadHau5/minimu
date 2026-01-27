@@ -23,7 +23,8 @@ SOURCE_DIR = src
 BUILD_DIR = build
 
 # List of all .c source files.
-SRC = $(wildcard $(SOURCE_DIR)/*.c)
+MIPS_SRC = $(wildcard $(SOURCE_DIR)/mips/*.c)
+SRC = $(MIPS_SRC) $(wildcard $(SOURCE_DIR)/*.c)
 # All .o files go to build dir.
 OBJ = $(SRC:$(SOURCE_DIR)/%.c=$(BUILD_DIR)/%.o)
 # Gcc/Clang will create these .d files containing dependencies.

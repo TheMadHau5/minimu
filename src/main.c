@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "mips.h"
+#include "mips/mips.h"
 
 int main(int argc, char** argv) {
 	int flags = 0;
@@ -35,21 +35,21 @@ int main(int argc, char** argv) {
 		printf("usage: %s file [-hv]\n", argv[0]);
 		exit(exitc);
 	}
+
 	FILE* fd = fopen(argv[1], "rb");
 	if (!fd) {
 		fprintf(stderr, "%s: unable to open '%s': %s\n", argv[0], argv[1], strerror(errno));
 		exit(1);
 	}
 
-	void* mem;
-	mem = calloc(256, 1<<20);
-	// mem = calloc(4, 1<<20); // 4 mb ram
+	void* mem; // TODO: make configurable
+	mem = calloc(4, 1<<20); // 4 mb ram
 	if (!mem) {
 		fprintf(stderr, "%s: unable to allocate memory: %s\n", argv[0], strerror(errno));
 		exit(1);
 	}
 
-	fread(mem, 1<<20, 256, fd);
+	fread(mem, 1<<20, 4, fd); // 4mb max
 	if (ferror(fd)) {
 		fprintf(stderr, "%s: error reading file '%s': %s\n", argv[0], argv[1], strerror(errno));
 		exit(1);
@@ -58,16 +58,16 @@ int main(int argc, char** argv) {
 
 	fclose(fd);
 
-	struct minimu_mips mips = mips_init(mem, psize);
-	while (mips.pc < mips.cpu.psize) {
-		mips_execute(&mips, flags);
+	struct minimu_mips mips = mips_init(mem, psize, flags);
+	while (mips.pc < mips.cpu.psize && mips.cpu.status == 0) {
+		mips.cpu.execute(&mips.cpu);
 	}
 
 	// dump memory
 	char outfile[256];
 	snprintf(outfile, 256, "%s.memout", argv[1]);
 	fd = fopen(outfile, "wb");
-	fwrite(mem, 1<<20, 256, fd);
+	fwrite(mem, 1<<20, 4, fd); // also 4mb
 	if (ferror(fd)) {
 		fprintf(stderr, "%s: error writing file '%s': %s\n", argv[0], outfile, strerror(errno));
 		exit(1);
