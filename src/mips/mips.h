@@ -12,5 +12,6 @@ struct minimu_mips {
 };
 
 struct minimu_mips mips_init(void*, uint32_t, uint16_t);
+void mips_disasm(uint32_t);
 
 #endif // MINIMU_MIPS_H

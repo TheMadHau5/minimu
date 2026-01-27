@@ -268,6 +268,7 @@ void mips_execute(struct minimu_cpu* mips_cpu) {
 		split[4] = (instr >> 6) & 0x1F;
 		split[5] = instr & 0x3F;
 		fprintf(stdout, "%08X: %06b %05b %05b %05b %05b %06b\n", pc, split[0], split[1], split[2], split[3], split[4], split[5]);
+		mips_disasm(instr);
 	}
 	uint8_t opcode = instr >> 26;
 	mips->registers[0] = 0; // reset $zero
