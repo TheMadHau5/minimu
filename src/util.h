@@ -1,4 +1,29 @@
+#include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
+
+typedef struct {
+	uint64_t size;
+	uint8_t data[];
+} minimu_mem_t;
+
+minimu_mem_t* minimu_mem_create(uint64_t size);
+bool minimu_mem_read(minimu_mem_t* m, uint64_t addr, void *dst, size_t len);
+bool minimu_mem_write(minimu_mem_t* m, uint64_t addr, const void *src, size_t len);
+uint8_t minimu_mem_read_u8(minimu_mem_t* m, uint64_t addr, bool *ok);
+void minimu_mem_write_u8(minimu_mem_t* m, uint64_t addr, uint8_t v, bool *ok);
+uint16_t minimu_mem_read_u16_le(minimu_mem_t* m, uint64_t addr, bool *ok);
+uint32_t minimu_mem_read_u32_le(minimu_mem_t* m, uint64_t addr, bool *ok);
+uint64_t minimu_mem_read_u64_le(minimu_mem_t* m, uint64_t addr, bool *ok);
+void minimu_mem_write_u16_le(minimu_mem_t* m, uint64_t addr, uint16_t v, bool *ok);
+void minimu_mem_write_u32_le(minimu_mem_t* m, uint64_t addr, uint32_t v, bool *ok);
+void minimu_mem_write_u64_le(minimu_mem_t* m, uint64_t addr, uint64_t v, bool *ok);
+uint16_t minimu_mem_read_u16_le(minimu_mem_t* m, uint64_t addr, bool *ok);
+uint32_t minimu_mem_read_u32_le(minimu_mem_t* m, uint64_t addr, bool *ok);
+uint64_t minimu_mem_read_u64_le(minimu_mem_t* m, uint64_t addr, bool *ok);
+void minimu_mem_write_u16_le(minimu_mem_t* m, uint64_t addr, uint16_t v, bool *ok);
+void minimu_mem_write_u32_le(minimu_mem_t* m, uint64_t addr, uint32_t v, bool *ok);
+void minimu_mem_write_u64_le(minimu_mem_t* m, uint64_t addr, uint64_t v, bool *ok);
 
 inline uint64_t zero_extend16(uint16_t val) {
 	return val;
