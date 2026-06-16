@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
 	fclose(fd);
 
 	struct minimu_mips mips = mips_init(mem, psize, flags);
-	while (mips.pc < mips.cpu.psize && mips.cpu.status == 0) {
+	while (mips.special[0] < mips.cpu.psize && mips.cpu.status == 0) {
 		mips.cpu.execute(&mips.cpu);
 	}
 
