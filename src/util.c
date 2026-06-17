@@ -1,5 +1,6 @@
 #include <string.h>
 
+#include <stdio.h>
 #include "util.h"
 
 extern inline uint64_t zero_extend16(uint16_t val);
@@ -15,7 +16,11 @@ extern inline uint64_t byte_swap_64(uint64_t val);
 
 minimu_mem_t* minimu_mem_create(uint64_t size) {
 	minimu_mem_t* mem = malloc(sizeof(*mem) + (size_t)size);
-	if (mem) mem->size = size;
+	if (!mem) {
+		fprintf(stderr, "failed to allocate memory\n");
+		exit(1);
+	}
+	mem->size = size;
 	return mem;
 }
 
