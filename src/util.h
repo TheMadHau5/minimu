@@ -1,3 +1,6 @@
+#ifndef MINIMU_UTIL_H
+#define MINIMU_UTIL_H
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -25,7 +28,7 @@ void minimu_mem_write_u16_le(minimu_mem_t* m, uint64_t addr, uint16_t v, bool *o
 void minimu_mem_write_u32_le(minimu_mem_t* m, uint64_t addr, uint32_t v, bool *ok);
 void minimu_mem_write_u64_le(minimu_mem_t* m, uint64_t addr, uint64_t v, bool *ok);
 
-inline uint64_t get_bits(uint64_t val) {
+inline uint64_t get_bits(uint64_t val, uint8_t idx, uint8_t count) {
 	return (val >> idx) & ((1ull << count) - 1);
 }
 
@@ -90,3 +93,5 @@ inline uint64_t byte_swap_64(uint64_t val) {
 		| (val & 0xFF) << 56;
 #endif
 }
+
+#endif // MINIMU_UTIL_H
