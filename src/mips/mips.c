@@ -79,6 +79,7 @@ void mips_set_memdword(struct minimu_mips* mips, uint64_t loc, uint64_t val) {
 }
 
 void mips_pipeline_cycle(struct minimu_mips* mips) {
+	/*
 	uint64_t pipeline[4][4]; // next
 
 	// WB
@@ -135,5 +136,6 @@ void mips_pipeline_cycle(struct minimu_mips* mips) {
 
 	// cycle forward
 	memcpy(mips->pipeline, pipeline, sizeof(pipeline));
+	*/
 
 }
