@@ -15,7 +15,8 @@ C_DEFINES =
 # C_DEFINES = -D_CRT_SECURE_NO_WARNINGS -D_USE_MATH_DEFINES \
 #     -DVK_USE_PLATFORM_WIN32_KHR -DWIN32_LEAN_AND_MEAN
 C_INCLUDES =
-C_FLAGS =
+C_FLAGS = -std=gnu11 -Wall -Wextra -g
+LDLIBS = -lm
 
 # The source directory.
 SOURCE_DIR = src
@@ -57,4 +58,4 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.c
 $(BIN): $(OBJ)
 	@echo -e "\e[1;32m""Linking C executable $@""\e[0m"
 	mkdir -p $(@D)
-	$(CC) $(OBJ) -o $@
+	$(CC) $(OBJ) -o $@ $(LDLIBS)

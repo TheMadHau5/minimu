@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "util.h"
 
+extern inline uint64_t get_bits(uint64_t val, uint8_t idx, uint8_t count);
 extern inline uint64_t zero_extend16(uint16_t val);
 extern inline int64_t zero_extend16_i(int16_t val);
 extern inline int64_t sign_extend16_i(int16_t val);

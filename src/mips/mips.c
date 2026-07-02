@@ -22,16 +22,16 @@ struct minimu_mips mips_init(void* mem, uint32_t len, uint16_t flags) {
 			flags,
 			0,
 		},
-		.registers = {},
-		.special = {},
-		.pipeline = {},
+		.registers = {0},
+		.fpu_regs = {0},
+		.special = {0},
+		.fcsr = 0,
+		.has_pending_branch = false,
+		.delay_slot_annul = false,
+		.pending_branch_target = 0,
 		.memory = mem
 	};
 }
-
-// TODO: handle delay slots
-// TODO: handle sign and endianness
-// TODO: implement coprocessors and doublewords
 
 void mips_execute_syscall(struct minimu_mips *mips, uint32_t instr) {
 	// currently just dumps regs
@@ -56,86 +56,45 @@ void mips_execute_syscall(struct minimu_mips *mips, uint32_t instr) {
 	}
 }
 
-// TODO: handle endianness
-// TODO: handle bounds
-uint32_t mips_get_memword(struct minimu_mips* mips, uint64_t loc) {
-	uint32_t val;
-	memcpy(&val, &mips->memory[loc], sizeof(val));
+uint32_t mips_get_memword(struct minimu_mips* mips, uint64_t loc, bool *ok) {
+	if (loc + 4 > mips->cpu.psize) { if (ok) *ok = false; return 0; }
+	uint8_t b[4];
+	memcpy(b, &((uint8_t*)mips->memory)[loc], 4);
+	if (ok) *ok = true;
+	return (uint32_t)b[0] | ((uint32_t)b[1] << 8) | ((uint32_t)b[2] << 16) | ((uint32_t)b[3] << 24);
+}
+
+uint64_t mips_get_memdword(struct minimu_mips* mips, uint64_t loc, bool *ok) {
+	if (loc + 8 > mips->cpu.psize) { if (ok) *ok = false; return 0; }
+	uint8_t b[8];
+	memcpy(b, &((uint8_t*)mips->memory)[loc], 8);
+	if (ok) *ok = true;
+	uint64_t val = 0;
+	for (int i = 7; i >= 0; i--) val = (val << 8) | b[i];
 	return val;
 }
 
-uint64_t mips_get_memdword(struct minimu_mips* mips, uint64_t loc) {
-	uint64_t val;
-	memcpy(&val, &mips->memory[loc], sizeof(val));
-	return val;
+void mips_set_memword(struct minimu_mips* mips, uint64_t loc, uint32_t val, bool *ok) {
+	if (loc + 4 > mips->cpu.psize) { if (ok) *ok = false; return; }
+	uint8_t b[4] = {
+		(uint8_t)(val & 0xff), (uint8_t)((val >> 8) & 0xff),
+		(uint8_t)((val >> 16) & 0xff), (uint8_t)((val >> 24) & 0xff),
+	};
+	memcpy(&((uint8_t*)mips->memory)[loc], b, 4);
+	if (ok) *ok = true;
 }
 
-void mips_set_memword(struct minimu_mips* mips, uint64_t loc, uint32_t val) {
-	memcpy(&mips->memory[loc], &val, sizeof(val));
+void mips_set_memdword(struct minimu_mips* mips, uint64_t loc, uint64_t val, bool *ok) {
+	if (loc + 8 > mips->cpu.psize) { if (ok) *ok = false; return; }
+	uint8_t b[8];
+	for (int i = 0; i < 8; i++) b[i] = (uint8_t)((val >> (8 * i)) & 0xff);
+	memcpy(&((uint8_t*)mips->memory)[loc], b, 8);
+	if (ok) *ok = true;
 }
 
-void mips_set_memdword(struct minimu_mips* mips, uint64_t loc, uint64_t val) {
-	memcpy(&mips->memory[loc], &val, sizeof(val));
-}
-
-void mips_pipeline_cycle(struct minimu_mips* mips) {
-	/*
-	uint64_t pipeline[4][4]; // next
-
-	// WB
-	uint8_t rt = (mips->pipeline[3][0] >> 16) & 0x1F;
-	mips->registers[rt] = mips->pipeline[3][1];
-
-	// MEM
-	pipeline[3][0] = mips->pipeline[2][0];
-	pipeline[3][1] = mips->pipeline[2][1];
-	pipeline[3][2] = mips->pipeline[2][2];
-	pipeline[3][3] = mips->pipeline[2][3];
-
-	// EX
-	pipeline[2][0] = mips->pipeline[1][0];
-	pipeline[2][1] = mips->pipeline[1][1];
-	pipeline[2][2] = mips->pipeline[1][2];
-	pipeline[2][3] = mips->pipeline[1][3];
-	uint8_t instr = pipeline[2][0] >> 26;
-	if (instr == 0) {
-		// SPECIAL
-		instr = 0x80;
-		instr |= pipeline[2][0] & 0x3F;
-	} else if (instr == 1) {
-		// REGIMM
-		instr = 0xC0;
-		instr |= (pipeline[2][0] >> 16) & 0x1F;
-	}
-	pipeline[2][2] = mips_execute_alu(mips, instr, pipeline[2][2], pipeline[2][3]);
-	// TODO: flush upcoming IF
-	if (0) {
-
-		pipeline[0][0] = mips_get_memword(mips, mips->special[0]);
-		pipeline[0][1] = mips->special[0] + 4;
-		mips->special[0] = pipeline[0][1];
-	}
-
-	// ID
-	pipeline[1][0] = mips->pipeline[0][0];
-	uint8_t rs = (pipeline[1][0] >> 21) & 0x1F;
-	rt = (pipeline[1][0] >> 16) & 0x1F;
-	int16_t imm = pipeline[1][0] & 0xFF;
-	pipeline[1][1] = mips->pipeline[0][1] + (((int64_t)imm) << 2);
-	pipeline[1][2] = mips->registers[rs];
-	pipeline[1][3] = mips->registers[rt];
-	// TODO: resolve branch here to avoid wasting one cycle
-
-	// IF
-	// TODO: branch predictor
-	pipeline[0][0] = mips_get_memword(mips, mips->special[0]);
-	pipeline[0][1] = mips->special[0] + 4;
-	mips->special[0] = pipeline[0][1];
-
-	// TODO: handle exceptions
-
-	// cycle forward
-	memcpy(mips->pipeline, pipeline, sizeof(pipeline));
-	*/
-
+void mips_apply_pending_branch(struct minimu_mips *mips) {
+	if (!mips->has_pending_branch) return;
+	mips->special[0] = mips->pending_branch_target;
+	mips->has_pending_branch = false;
+	mips->delay_slot_annul = false;
 }
